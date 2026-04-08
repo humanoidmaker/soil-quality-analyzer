@@ -1,51 +1,33 @@
-version: '3.8'
-
+version: "3.8"
 services:
-  mongodb:
-    image: mongo:7
-    container_name: soilsense-mongo
-    ports:
-      - "27018:27017"
-    volumes:
-      - mongo_data:/data/db
-    restart: unless-stopped
-
   backend:
-    build:
-      context: .
-      dockerfile: Dockerfile.backend
-    container_name: soilsense-backend
-    ports:
-      - "8001:8001"
+    build: ./backend
+    ports: ["8000:8000"]
     environment:
-      - MONGODB_URL=mongodb://mongodb:27017
-      - DATABASE_NAME=soil_sense
-      - JWT_SECRET=${JWT_SECRET:-change-this-to-a-strong-secret}
-      - USE_GPU=false
-    depends_on:
-      - mongodb
-    volumes:
-      - model_cache:/root/.cache
-    restart: unless-stopped
+      - MONGODB_URI=mongodb://mongo:27017/soil_quality_analyzer
+      - JWT_SECRET=change-in-production
+      - CORS_ORIGINS=http://localhost:3000
+    depends_on: [mongo]
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: all
+              count: 1
               capabilities: [gpu]
+    restart: unless-stopped
 
   frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-    container_name: soilsense-frontend
-    ports:
-      - "3001:80"
-    depends_on:
-      - backend
+    build: ./frontend
+    ports: ["3000:3000"]
+    depends_on: [backend]
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    ports: ["27017:27017"]
+    volumes: [mongo_data:/data/db]
     restart: unless-stopped
 
 volumes:
   mongo_data:
-  model_cache:
